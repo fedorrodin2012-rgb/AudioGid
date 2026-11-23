@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Админпанель — Аудиогид 343э</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--accent:#38bdf8;--text:#e2e8f0;--muted:#94a3b8;--danger:#f87171;}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column}
+  header{padding:12px 20px;background:var(--card);display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+  header h1{font-size:1.1rem}
+  header .hint{color:var(--muted);font-size:.85rem}
+  .layout{flex:1;display:flex;min-height:0}
+  #map{flex:1;min-width:0}
+  aside{width:380px;background:var(--card);display:flex;flex-direction:column;border-left:1px solid #334155}
+  .form{padding:14px;border-bottom:1px solid #334155}
+  .form h2{font-size:.95rem;margin-bottom:10px;color:var(--accent)}
+  .form label{display:block;font-size:.8rem;color:var(--muted);margin:8px 0 4px}
+  .form input,.form select{width:100%;padding:8px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:var(--text)}
+  .form input[type=file]{padding:6px}
+  .form button{margin-top:12px;width:100%;padding:10px;border:none;border-radius:8px;background:var(--accent);color:#0f172a;font-weight:700;cursor:pointer}
+  .form button:disabled{opacity:.5;cursor:not-allowed}
+  .list{flex:1;overflow-y:auto;padding:10px}
+  .point{background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px;margin-bottom:8px;font-size:.85rem}
+  .point b{color:var(--accent)}
+  .point .row{display:flex;justify-content:space-between;gap:8px;margin-top:6px;color:var(--muted);font-size:.75rem}
+  .point button{background:none;border:none;color:var(--danger);cursor:pointer;font-size:.8rem}
+  .toolbar{display:flex;gap:8px;padding:10px;border-top:1px solid #334155}
+  .toolbar button{flex:1;padding:8px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:var(--text);cursor:pointer;font-size:.8rem}
+  .status{padding:6px 14px;font-size:.75rem;color:var(--muted)}
+</style>
+</head>
+<body>
+<header>
+  <h1>🚌 Аудиогид 343э — админпанель</h1>
+  <span class="hint">Клик по карте → добавление остановки. Радиус по умолчанию 100 м.</span>
+</header>
+
+<div class="layout">
+  <div id="map"></div>
+  <aside>
+    <div class="form">
+      <h2>Новая точка интереса</h2>
+      <label>Название остановки</label>
+      <input id="fTitle" placeholder="напр. «Ул. Ленина»">
+      <label>Координаты (клик по карте)</label>
+      <input id="fCoords" readonly placeholder="широта, долгота">
+      <label>Радиус срабатывания, м</label>
+      <input id="fRadius" type="number" value="100" min="20" max="1000">
+      <label>Аудиофайл (AAC/M4A, 192 кбит/с, 48 кГц, моно)</label>
+      <input id="fAudio" type="file" accept="audio/mp4,audio/aac,.m4a">
+      <button id="btnAdd" disabled>Добавить точку</button>
+    </div>
+    <div class="status" id="status">Точек: 0</div>
+    <div class="list" id="list"></div>
+    <div class="toolbar">
+      <button id="btnExport">Экспорт JSON</button>
+      <button id="btnImport">Импорт JSON</button>
+      <input id="fileImport" type="file" accept=".json" hidden>
+    </div>
+  </aside>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  const map = L.map('map').setView([55.751244, 37.618423], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap'
+  }).addTo(map);
+
+  const points = [];
+  let markers = [];
+  let pending = null;
+
+  const fTitle = document.getElementById('fTitle');
+  const fCoords = document.getElementById('fCoords');
+  const fRadius = document.getElementById('fRadius');
+  const fAudio = document.getElementById('fAudio');
+  const btnAdd = document.getElementById('btnAdd');
+  const listEl = document.getElementById('list');
+  const statusEl = document.getElementById('status');
+
+  map.on('click', e => {
+    const { lat, lng } = e.latlng;
+    pending = { lat: +lat.toFixed(6), lng: +lng.toFixed(6) };
+    fCoords.value = pending.lat + ', ' + pending.lng;
+    updateAddState();
+    L.popup().setLatLng(e.latlng).setContent('Новая точка').openOn(map);
+  });
+
+  function updateAddState(){
+    btnAdd.disabled = !(pending && fTitle.value.trim());
+  }
+  fTitle.addEventListener('input', updateAddState);
+
+  btnAdd.addEventListener('click', () => {
+    const file = fAudio.files[0];
+    if(!pending || !fTitle.value.trim()) return;
+    if(!file){
+      alert('Выберите аудиофайл');
+      return;
+    }
+    const point = {
+      id: 'poi_' + Date.now(),
+      title: fTitle.value.trim(),
+      lat: pending.lat,
+      lng: pending.lng,
+      radius: +fRadius.value || 100,
+      audioName: file.name,
+      audioSize: file.size,
+      // в реальном проекте здесь upload на сервер и получение URL
+      audioUrl: null
+    };
+    points.push(point);
+    addMarker(point);
+    renderList();
+    resetForm();
+  });
+
+  function addMarker(p){
+    const m = L.circleMarker([p.lat, p.lng], {
+      radius: 8, color: '#38bdf8', fillColor: '#38bdf8', fillOpacity: .6
+    }).addTo(map);
+    m.bindPopup(`<b>${p.title}</b><br>радиус ${p.radius} м<br>${p.audioName || ''}`);
+    m.pointId = p.id;
+    markers.push(m);
+  }
+
+  function renderList(){
+    listEl.innerHTML = '';
+    points.forEach((p, i) => {
+      const div = document.createElement('div');
+      div.className = 'point';
+      div.innerHTML = `
+        <b>${i+1}. ${p.title}</b>
+        <div class="row"><span>${p.lat}, ${p.lng} · ${p.radius} м</span>
+        <button data-id="${p.id}">удалить</button></div>
+        <div class="row"><span>${p.audioName || '—'}</span></div>
+      `;
+      div.querySelector('button').addEventListener('click', () => removePoint(p.id));
+      listEl.appendChild(div);
+    });
+    statusEl.textContent = 'Точек: ' + points.length;
+  }
+
+  function removePoint(id){
+    const idx = points.findIndex(p => p.id === id);
+    if(idx === -1) return;
+    points.splice(idx, 1);
+    const mIdx = markers.findIndex(m => m.pointId === id);
+    if(mIdx !== -1){ map.removeLayer(markers[mIdx]); markers.splice(mIdx,1); }
+    renderList();
+  }
+
+  function resetForm(){
+    fTitle.value = ''; fCoords.value = ''; fRadius.value = 100; fAudio.value = '';
+    pending = null; updateAddState();
+  }
+
+  document.getElementById('btnExport').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify({ route: '343э', points }, null, 2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'route-343e.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  const fileImport = document.getElementById('fileImport');
+  document.getElementById('btnImport').addEventListener('click', () => fileImport.click());
+  fileImport.addEventListener('change', () => {
+    const f = fileImport.files[0]; if(!f) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try{
+        const data = JSON.parse(reader.result);
+        points.length = 0;
+        markers.forEach(m => map.removeLayer(m)); markers = [];
+        (data.points || []).forEach(p => { points.push(p); addMarker(p); });
+        renderList();
+        if(points.length) map.fitBounds(points.map(p => [p.lat, p.lng]));
+      }catch(e){ alert('Ошибка чтения JSON: ' + e.message); }
+    };
+    reader.readAsText(f);
+  });
+</script>
+</body>
+</html>
