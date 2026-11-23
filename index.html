@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Админпанель — Аудиогид 343э</title>
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Админпанель — Аудиогид 343э (СПб)</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
   :root{--bg:#0f172a;--card:#1e293b;--accent:#38bdf8;--text:#e2e8f0;--muted:#94a3b8;--danger:#f87171;}
@@ -34,8 +35,8 @@
 </head>
 <body>
 <header>
-  <h1>🚌 Аудиогид 343э — админпанель</h1>
-  <span class="hint">Клик по карте → добавление остановки. Радиус по умолчанию 100 м.</span>
+  <h1>🚌 Аудиогид 343э — админпанель (СПб)</h1>
+  <span class="hint">Остановки маршрута 343Э уже на карте. Клик по карте → добавить новую.</span>
 </header>
 
 <div class="layout">
@@ -44,7 +45,7 @@
     <div class="form">
       <h2>Новая точка интереса</h2>
       <label>Название остановки</label>
-      <input id="fTitle" placeholder="напр. «Ул. Ленина»">
+      <input id="fTitle" placeholder="напр. «Невский проспект»">
       <label>Координаты (клик по карте)</label>
       <input id="fCoords" readonly placeholder="широта, долгота">
       <label>Радиус срабатывания, м</label>
@@ -65,12 +66,50 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-  const map = L.map('map').setView([59.934280, 30.335098], 14);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap'
+  // 1. Карта центрируется на Санкт-Петербурге (район маршрута)
+  const map = L.map('map').setView([59.8500, 30.1000], 11);
+  
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© OpenStreetMap contributors © CARTO',
+    subdomains: 'abcd',
+    maxZoom: 19
   }).addTo(map);
 
-  const points = [];
+  // 2. Базовый список остановок 343Э
+  // ВАЖНО: Координаты указаны примерно (для демонстрации). 
+  // Для точной работы замените lat/lng на реальные значения.
+  const points = [
+    { id: 'poi_1', title: 'Ломоносов, Вокзал', lat: 59.9110, lng: 29.7710, radius: 100, audioName: 'lomonosov_vokzal.m4a', audioUrl: null },
+    { id: 'poi_2', title: 'Еленинская улица', lat: 59.9105, lng: 29.7750, radius: 100, audioName: 'eleninskaya.m4a', audioUrl: null },
+    { id: 'poi_3', title: 'Владимирская улица', lat: 59.9090, lng: 29.7800, radius: 100, audioName: 'vladimirskaya.m4a', audioUrl: null },
+    { id: 'poi_4', title: 'Улица Победы', lat: 59.9080, lng: 29.7850, radius: 100, audioName: 'pobedy.m4a', audioUrl: null },
+    { id: 'poi_5', title: 'Красноармейская улица', lat: 59.9070, lng: 29.7900, radius: 100, audioName: 'krasnoarmeyskaya.m4a', audioUrl: null },
+    { id: 'poi_6', title: 'Швейцарская улица', lat: 59.9060, lng: 29.7950, radius: 100, audioName: 'shveitsarskaya.m4a', audioUrl: null },
+    { id: 'poi_7', title: 'Улица Федюнинского', lat: 59.9050, lng: 29.8000, radius: 100, audioName: 'fedyuninskogo.m4a', audioUrl: null },
+    { id: 'poi_8', title: 'Улица Федюнинского, 16', lat: 59.9040, lng: 29.8050, radius: 100, audioName: 'fedyuninskogo_16.m4a', audioUrl: null },
+    { id: 'poi_9', title: 'Ораниенбаумский проспект', lat: 59.9030, lng: 29.8100, radius: 100, audioName: 'oranienbaumskiy.m4a', audioUrl: null },
+    { id: 'poi_10', title: 'Улица Федюнинского (по требованию)', lat: 59.9020, lng: 29.8150, radius: 100, audioName: 'fedyuninskogo_po_trebovaniyu.m4a', audioUrl: null },
+    { id: 'poi_11', title: 'Улица Связи', lat: 59.9010, lng: 29.8200, radius: 100, audioName: 'svyazi.m4a', audioUrl: null },
+    { id: 'poi_12', title: 'Новогорская улица', lat: 59.9000, lng: 29.8250, radius: 100, audioName: 'novogorskaya.m4a', audioUrl: null },
+    { id: 'poi_13', title: 'Улица Жоры Антоненко', lat: 59.8990, lng: 29.8300, radius: 100, audioName: 'zhory_antonenko.m4a', audioUrl: null },
+    { id: 'poi_14', title: 'Мордвиновка', lat: 59.8980, lng: 29.8350, radius: 100, audioName: 'mordvinovka.m4a', audioUrl: null },
+    { id: 'poi_15', title: 'Фабричная улица', lat: 59.8970, lng: 29.8400, radius: 100, audioName: 'fabrichnaya.m4a', audioUrl: null },
+    { id: 'poi_16', title: 'Разводная улица', lat: 59.8960, lng: 29.8450, radius: 100, audioName: 'razvodnaya.m4a', audioUrl: null },
+    { id: 'poi_17', title: 'Константиновская ул., Николаевская больница', lat: 59.8950, lng: 29.8500, radius: 100, audioName: 'konstantinovskaya.m4a', audioUrl: null },
+    { id: 'poi_18', title: 'Улица Аврова', lat: 59.8940, lng: 29.8550, radius: 100, audioName: 'avrova.m4a', audioUrl: null },
+    { id: 'poi_19', title: 'Улица Крылова', lat: 59.8930, lng: 29.8600, radius: 100, audioName: 'krylova.m4a', audioUrl: null },
+    { id: 'poi_20', title: 'Кропоткинская улица', lat: 59.8920, lng: 29.8650, radius: 100, audioName: 'kropotkinskaya.m4a', audioUrl: null },
+    { id: 'poi_21', title: 'Фронтовая улица', lat: 59.8910, lng: 29.8700, radius: 100, audioName: 'frontovaya.m4a', audioUrl: null },
+    { id: 'poi_22', title: 'Проспект Будённого', lat: 59.8900, lng: 29.8750, radius: 100, audioName: 'budennogo.m4a', audioUrl: null },
+    { id: 'poi_23', title: 'Рогачёвский переулок', lat: 59.8890, lng: 29.8800, radius: 100, audioName: 'rogachevskiy.m4a', audioUrl: null },
+    { id: 'poi_24', title: 'Улица Пионерстроя, угол пр.', lat: 59.8880, lng: 29.8850, radius: 100, audioName: 'pionerstroya.m4a', audioUrl: null },
+    { id: 'poi_25', title: 'Ветеранов, угол ул. Пограничника Гарькавого', lat: 59.8870, lng: 29.8900, radius: 100, audioName: 'pogranichnika_garkavogo.m4a', audioUrl: null },
+    { id: 'poi_26', title: 'Авангардная улица', lat: 59.8860, lng: 29.8950, radius: 100, audioName: 'avangardnaya.m4a', audioUrl: null },
+    { id: 'poi_27', title: 'Пр. Маршала Жукова, угол пр.', lat: 59.8850, lng: 29.9000, radius: 100, audioName: 'marshala_zhukova.m4a', audioUrl: null },
+    { id: 'poi_28', title: 'Солдата Корзуна', lat: 59.8840, lng: 29.9050, radius: 100, audioName: 'soldata_korzuna.m4a', audioUrl: null },
+    { id: 'poi_29', title: 'Ст. метро Проспект Ветеранов', lat: 59.8830, lng: 29.9100, radius: 100, audioName: 'prospekt_veteranov.m4a', audioUrl: null }
+  ];
+
   let markers = [];
   let pending = null;
 
@@ -82,12 +121,21 @@
   const listEl = document.getElementById('list');
   const statusEl = document.getElementById('status');
 
-  .on('click', e => {
+  // 3. Отрисовка существующих остановок на карте
+  function initMap() {
+    points.forEach(p => addMarker(p));
+    renderList();
+    if(points.length > 0) {
+      map.fitBounds(points.map(p => [p.lat, p.lng]));
+    }
+  }
+
+  map.on('click', e => {
     const { lat, lng } = e.latlng;
     pending = { lat: +lat.toFixed(6), lng: +lng.toFixed(6) };
     fCoords.value = pending.lat + ', ' + pending.lng;
     updateAddState();
-    L.popup().setLatLng(e.latlng).setContent('Новая точка').openOn();
+    L.popup().setLatLng(e.latlng).setContent('Новая точка').openOn(map);
   });
 
   function updateAddState(){
@@ -98,19 +146,14 @@
   btnAdd.addEventListener('click', () => {
     const file = fAudio.files[0];
     if(!pending || !fTitle.value.trim()) return;
-    if(!file){
-      alert('Выберите аудиофайл');
-      return;
-    }
     const point = {
       id: 'poi_' + Date.now(),
       title: fTitle.value.trim(),
       lat: pending.lat,
       lng: pending.lng,
       radius: +fRadius.value || 100,
-      audioName: file.name,
-      audioSize: file.size,
-      // в реальном проекте здесь upload на сервер и получение URL
+      audioName: file ? file.name : 'audio.m4a',
+      audioSize: file ? file.size : 0,
       audioUrl: null
     };
     points.push(point);
@@ -160,10 +203,10 @@
   }
 
   document.getElementById('btnExport').addEventListener('click', () => {
-    const blob = new Blob([JSON.stringify({ route: '343э', points }, null, 2)], {type:'application/json'});
+    const blob = new Blob([JSON.stringify({ route: '343э', city: 'СПб', points }, null, 2)], {type:'application/json'});
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'route-343e.json';
+    a.download = 'route-343e-spb.json';
     a.click();
     URL.revokeObjectURL(a.href);
   });
@@ -185,6 +228,9 @@
     };
     reader.readAsText(f);
   });
+
+  // Запуск после загрузки страницы
+  initMap();
 </script>
 </body>
 </html>
