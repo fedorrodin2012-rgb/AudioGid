@@ -69,11 +69,10 @@
   // 1. Карта центрируется на Санкт-Петербурге (район маршрута)
   const map = L.map('map').setView([59.8500, 30.1000], 11);
   
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-    attribution: '© OpenStreetMap contributors © CARTO',
-    subdomains: 'abcd',
-    maxZoom: 19
-  }).addTo(map);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap contributors',
+  maxZoom: 19
+}).addTo(map);
 
   // 2. Базовый список остановок 343Э
   // ВАЖНО: Координаты указаны примерно (для демонстрации). 
