@@ -65,7 +65,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-  const map = L.map('map').setView([59.934280, 30.335098], 12);
+  const map = L.map('map').setView([59.934280, 30.335098], 14);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap'
   }).addTo(map);
@@ -82,12 +82,12 @@
   const listEl = document.getElementById('list');
   const statusEl = document.getElementById('status');
 
-  map.on('click', e => {
+  .on('click', e => {
     const { lat, lng } = e.latlng;
     pending = { lat: +lat.toFixed(6), lng: +lng.toFixed(6) };
     fCoords.value = pending.lat + ', ' + pending.lng;
     updateAddState();
-    L.popup().setLatLng(e.latlng).setContent('Новая точка').openOn(map);
+    L.popup().setLatLng(e.latlng).setContent('Новая точка').openOn();
   });
 
   function updateAddState(){
